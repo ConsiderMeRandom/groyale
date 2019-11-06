@@ -3,27 +3,38 @@
 <title>Keyboard movment</title>
 
 <body>
-  <script src="../pixi/pixi.min.js"></script>
+  <script src="/student/globalit/2019/330187/learningPixi-master/pixi/pixi.min.js"></script>
   <script>
     //Aliases
-    let Application = PIXI.Application,
+    var Application = PIXI.Application,
       Container = PIXI.Container,
       loader = PIXI.loader,
       resources = PIXI.loader.resources,
       TextureCache = PIXI.utils.TextureCache,
-      Sprite = PIXI.Sprite;
-    stage = new PIXI.Container();
+      Sprite = PIXI.Sprite,
+      stage = new PIXI.Container(),
+      carrotTex = PIXI.Texture.fromImage('/student/globalit/2019/330187/learningPixi-master/examples/images/blob.png');
+    Text = PIXI.Text,
+      TextStyle = PIXI.TextStyle;
+
 
     //Create a Pixi Application
-    let app = new Application({
-      width: 1920,
-      height: 1080,
+    var app = new Application({
+      width: 0,
+      height: 0,
       antialiasing: true,
-      transparent: false,
+      transparent: true,
       resolution: 1
     });
 
-    var renderer = PIXI.autoDetectRenderer(800, 600, {
+    var background = new PIXI.Graphics();
+    background.beginFill(0x123456);
+    background.drawRect(0, 0, 1920, 1080);
+    background.endFill();
+    stage.addChild(background);
+
+
+    var renderer = PIXI.autoDetectRenderer(1920, 1080, {
       backgroundColor: 0x1099bb
     });
     document.body.appendChild(renderer.view);
@@ -31,13 +42,12 @@
     document.body.appendChild(app.view);
 
     loader
-      .add("images/cat.png")
+      .add("/student/globalit/2019/330187/learningPixi-master/examples/images/cat.png")
+      .add("/student/globalit/2019/330187/learningPixi-master/examples/images/blob.png")
       .load(setup);
 
-
-
     //Define any variables that are used in more than one function
-    var cat, state, shoot;
+    var cat, state, shoot, cat2, position, bullets;
 
     function shoot(rotation, startPosition) {
       var bullet = new PIXI.Sprite(carrotTex);
@@ -48,24 +58,51 @@
       bullets.push(bullet);
     }
 
+
+
     function setup() {
+		
+		
 
       //Create the `cat` sprite 
-      cat = new Sprite(resources["images/cat.png"].texture);
+      cat = new Sprite(resources["/student/globalit/2019/330187/learningPixi-master/examples/images/cat.png"].texture);
+      cat2 = new Sprite(resources["/student/globalit/2019/330187/learningPixi-master/examples/images/cat.png"].texture);
+      cat.anchor.x = 0.5;
+      cat.anchor.y = 0.5;
+      cat2.anchor.x = 0.5;
+      cat2.anchor.y = 0.5;
       cat.y = 96;
       cat.vx = 0;
       cat.vy = 0;
-      app.stage.addChild(cat);
+      cat.position.x = 600;
+      cat.position.y = 200;
+      cat2.position.x = 250;
+      cat2.position.y = 200;
+      stage.addChild(cat);
+      stage.addChild(cat2);
+
 
       //Capture the keyboard arrow keys
-      let left = keyboard(37),
-        up = keyboard(38),
-        right = keyboard(39),
-        down = keyboard(40);
+      let left = keyboard(65),
+        up = keyboard(87),
+        right = keyboard(68),
+        down = keyboard(83),
+        space = keyboard(32);
+
+
+      //Space key `press` method
+      space.press = () => {
+        shoot(cat.rotation, {
+          x: cat.position.x + Math.cos(cat.rotation) * 20,
+          y: cat.position.y + Math.sin(cat.rotation) * 20
+        });
+        var bullets = [];
+        var bulletSpeed = .5;
+      };
+
 
       //Left arrow key `press` method
       left.press = () => {
-        //Change the cat's velocity when the key is pressed
         cat.vx = -5;
         cat.vy = 0;
       };
@@ -113,6 +150,16 @@
         }
       };
 
+      //Create the text sprite
+      let style = new TextStyle({
+        fontFamily: "sans-serif",
+        fontSize: 18,
+        fill: "white",
+      });
+      message = new Text("No collision...", style);
+      message.position.set(8, 8);
+      stage.addChild(message);
+
       //Set the game state
       state = play;
 
@@ -121,7 +168,6 @@
     }
 
     function gameLoop(delta) {
-
       //Update the current game state:
       state(delta);
     }
@@ -131,7 +177,79 @@
       //Use the cat's velocity to make it move
       cat.x += cat.vx;
       cat.y += cat.vy
+        //check for a collision between the cat and the box
+
+      if (hitTestRectangle(cat, cat2)) {
+
+        //if there's a collision, change the message text
+        message.text = "hit!";
+        shoot(cat.rotation, {
+          x: cat.position.x + Math.cos(cat.rotation) * 20,
+          y: cat.position.y + Math.sin(cat.rotation) * 20
+        });
+
+      } else {
+
+        //if there's no collision, reset the message
+        //text and the box's color
+        message.text = "No collision...";
+      }
+
     }
+
+    //The `hitTestRectangle` function
+    function hitTestRectangle(r1, r2) {
+
+      //Define the variables we'll need to calculate
+      let hit, combinedHalfWidths, combinedHalfHeights, vx, vy;
+
+      //hit will determine whether there's a collision
+      hit = false;
+
+      //Find the center points of each sprite
+      r1.centerX = r1.x + r1.width / 2;
+      r1.centerY = r1.y + r1.height / 2;
+      r2.centerX = r2.x + r2.width / 2;
+      r2.centerY = r2.y + r2.height / 2;
+
+      //Find the half-widths and half-heights of each sprite
+      r1.halfWidth = r1.width / 2;
+      r1.halfHeight = r1.height / 2;
+      r2.halfWidth = r2.width / 2;
+      r2.halfHeight = r2.height / 2;
+
+      //Calculate the distance vector between the sprites
+      vx = r1.centerX - r2.centerX;
+      vy = r1.centerY - r2.centerY;
+
+      //Figure out the combined half-widths and half-heights
+      combinedHalfWidths = r1.halfWidth + r2.halfWidth;
+      combinedHalfHeights = r1.halfHeight + r2.halfHeight;
+
+      //Check for a collision on the x axis
+      if (Math.abs(vx) < combinedHalfWidths) {
+
+        //A collision might be occuring. Check for a collision on the y axis
+        if (Math.abs(vy) < combinedHalfHeights) {
+
+          //There's definitely a collision happening
+          hit = true;
+        } else {
+
+          //There's no collision on the y axis
+          hit = false;
+        }
+      } else {
+
+        //There's no collision on the x axis
+        hit = false;
+      }
+
+      //`hit` will be either `true` or `false`
+      return hit;
+    };
+
+
 
     //The `keyboard` helper function
     function keyboard(keyCode) {
@@ -177,7 +295,7 @@
 
     stage.on("mousedown", function(e) {
       shoot(cat.rotation, {
-        x:on.x + Mat cat.positih.cos(cat.rotation) * 20,
+        x: cat.position.x + Math.cos(cat.rotation) * 20,
         y: cat.position.y + Math.sin(cat.rotation) * 20
       });
     })
